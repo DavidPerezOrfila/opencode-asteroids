@@ -1,0 +1,24 @@
+{
+  "name": "03-opencode-asteroids",
+  "version": "1.0.0",
+  "description": "Clon del clásico arcade **Asteroids** implementado en canvas HTML5 puro, sin dependencias ni bundler.",
+  "main": "game.js",
+  "scripts": {
+    "test": "playwright test"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/DavidPerezOrfila/opencode-asteroids.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/DavidPerezOrfila/opencode-asteroids/issues"
+  },
+  "homepage": "https://github.com/DavidPerezOrfila/opencode-asteroids#readme",
+  "devDependencies": {
+    "@playwright/test": "^1.63.0"
+  }
+}

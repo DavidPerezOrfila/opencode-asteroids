@@ -32,14 +32,26 @@ Luego visita `http://localhost:3000`.
 
 ## Puntuación
 
-| Asteroide | Puntos |
-| --------- | ------ |
-| Grande    | 20     |
-| Mediano   | 50     |
-| Pequeño   | 100    |
+| Asteroide      | Puntos |
+| -------------- | ------ |
+| Grande         | 20     |
+| Mediano        | 50     |
+| Pequeño        | 100    |
+| Estrella fugaz | 150    |
 
 ## Características
 
 - 3 vidas con invencibilidad temporal al reaparecer (parpadeo)
 - Asteroides se parten en fragmentos más pequeños al ser destruidos
+- Estrella fugaz: asteroide especial, amarillo y con estela, que cruza la pantalla al doble y medio de velocidad y se desvanece a los 6 segundos si no lo destruyes. No se parte y no bloquea el paso de nivel; vale 150 puntos
+- Power-up **Velocidad**: aparece de vez en cuando y duplica el empuje de la nave durante 5 segundos
 - Partículas de explosión al destruir asteroides
+
+## Tests
+
+Comprobación end-to-end con Playwright sobre Chrome (el juego en sí no tiene dependencias en tiempo de ejecución, esto es solo para desarrollo):
+
+```bash
+npm install
+npm test
+```
