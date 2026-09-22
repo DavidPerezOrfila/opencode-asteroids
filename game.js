@@ -144,6 +144,10 @@ class Asteroid {
 }
 
 // ── Ship ──────────────────────────────────────────────────────────────────────
+const SHIELD_DURATION = 4;    // segundos activo
+const SHIELD_COOLDOWN = 10;   // segundos entre activaciones
+const SHIELD_RADIUS   = 22;   // radio visual y de colisión
+
 class Ship {
   constructor() { this.reset(); }
 
@@ -159,15 +163,26 @@ class Ship {
     this.shootCooldown = 0;
     this.speedBoost    = 0;
     this.tripleShot    = 0;
+    this.shieldTime    = 0;
+    this.shieldCooldown = 0;
     this.dead          = false;
   }
 
   update(dt) {
     if (this.dead) return;
-    if (this.invincible    > 0) this.invincible    -= dt;
-    if (this.shootCooldown > 0) this.shootCooldown -= dt;
-    if (this.speedBoost    > 0) this.speedBoost    -= dt;
-    if (this.tripleShot    > 0) this.tripleShot    -= dt;
+    if (this.invincible     > 0) this.invincible     -= dt;
+    if (this.shootCooldown  > 0) this.shootCooldown  -= dt;
+    if (this.speedBoost     > 0) this.speedBoost     -= dt;
+    if (this.tripleShot     > 0) this.tripleShot     -= dt;
+    if (this.shieldTime     > 0) this.shieldTime     -= dt;
+    if (this.shieldCooldown > 0) this.shieldCooldown -= dt;
+
+    // Activar escudo (Shift)
+    if ((pressed('ShiftLeft') || pressed('ShiftRight')) &&
+        this.shieldCooldown <= 0 && this.shieldTime <= 0) {
+      this.shieldTime     = SHIELD_DURATION;
+      this.shieldCooldown = SHIELD_COOLDOWN;
+    }
 
     const ROT   = 3.5;   // rad/s
     const THRUST = 260 * (this.speedBoost > 0 ? 2 : 1);  // px/s² (x2 con Velocidad)
@@ -237,6 +252,17 @@ class Ship {
     }
 
     ctx.restore();
+
+    // Escudo: círculo alrededor de la nave
+    if (this.shieldTime > 0) {
+      ctx.save();
+      ctx.strokeStyle = 'rgba(80, 220, 255, 0.85)';
+      ctx.lineWidth   = 2;
+      ctx.beginPath();
+      ctx.arc(this.x, this.y, SHIELD_RADIUS, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.restore();
+    }
   }
 }
 
@@ -469,14 +495,26 @@ function update(dt) {
   asteroids = asteroids.filter(a => !a.dead).concat(newAsteroids);
   bullets   = bullets.filter(b => !b.dead);
 
-  // Nave vs asteroide
+  // Nave vs asteroide. El escudo absorbe el impacto y rompe el asteroide.
+  // Hoy no hay balas enemigas; si se añaden, reusar este mismo chequeo.
   if (ship.invincible <= 0) {
+    const splitAsteroids = [];
     for (const a of asteroids) {
-      if (dist(ship, a) < ship.radius + a.radius * 0.82) {
-        killShip();
-        break;
+      if (a.dead) continue;
+      const blocked = ship.shieldTime > 0;
+      const hitRadius = blocked ? SHIELD_RADIUS : ship.radius;
+      if (dist(ship, a) < hitRadius + a.radius * 0.82) {
+        if (blocked) {
+          a.dead = true;
+          explode(a.x, a.y, a.size * 5);
+          splitAsteroids.push(...a.split());
+        } else {
+          killShip();
+          break;
+        }
       }
     }
+    asteroids = asteroids.filter(a => !a.dead).concat(splitAsteroids);
   }
 
   // Nivel completado (la estrella fugaz no cuenta)
@@ -517,6 +555,12 @@ function drawHUD() {
   if (ship.tripleShot > 0) {
     ctx.fillStyle = '#f4f';
     ctx.fillText(`TRIPLE x3  ${ship.tripleShot.toFixed(1)}s`, 14, 66);
+    ctx.fillStyle = '#fff';
+  }
+
+  if (ship.shieldTime > 0) {
+    ctx.fillStyle = '#5cf';
+    ctx.fillText(`ESCUDO  ${ship.shieldTime.toFixed(1)}s`, 14, 86);
     ctx.fillStyle = '#fff';
   }
 
