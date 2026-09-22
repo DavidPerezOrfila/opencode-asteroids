@@ -106,3 +106,18 @@ test('chocar con la estrella fugaz mata a la nave', async ({ page }) => {
 
   await expect.poll(async () => (await snapshot(page)).lives, { timeout: 5000 }).toBe(2);
 });
+
+test('la tecla C cicla la skin y la guarda', async ({ page }) => {
+  await page.goto('index.html');
+  await read(page, 'skinIndex = 0');
+
+  await page.keyboard.press('KeyC');
+  await expect.poll(() => read(page, 'skinIndex')).toBe(1);
+  expect(await read(page, 'localStorage.getItem("asteroids-skin")')).toBe('1');
+
+  await page.keyboard.press('KeyC');
+  await expect.poll(() => read(page, 'skinIndex')).toBe(2);
+
+  await page.keyboard.press('KeyC');   // vuelve a la primera
+  await expect.poll(() => read(page, 'skinIndex')).toBe(0);
+});

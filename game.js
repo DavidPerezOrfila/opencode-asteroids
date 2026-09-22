@@ -143,6 +143,27 @@ class Asteroid {
   }
 }
 
+// ── Skins de la nave ──────────────────────────────────────────────────────────
+const SKINS = [
+  { nombre: 'CLASICA', color: '#fff', llama: 'rgba(255, 130, 0, 0.85)', forma: 'clasica' },
+  { nombre: 'DARDO',   color: '#f4f', llama: 'rgba(255, 80, 220, 0.85)', forma: 'dardo' },
+  { nombre: 'ALA',     color: '#f84', llama: 'rgba(255, 60, 0, 0.85)',  forma: 'ala' },
+];
+
+// Persistencia tolerante a almacenamiento bloqueado (modo privado, file://)
+function loadSkin() {
+  let i = 0;
+  try { i = Number(localStorage.getItem('asteroids-skin')); } catch { /* no disponible */ }
+  return Number.isInteger(i) && i >= 0 && i < SKINS.length ? i : 0;
+}
+
+function saveSkin(i) {
+  try { localStorage.setItem('asteroids-skin', i); } catch { /* no disponible */ }
+}
+
+let skinIndex = loadSkin();
+const skin = () => SKINS[skinIndex];
+
 // ── Ship ──────────────────────────────────────────────────────────────────────
 class Ship {
   constructor() { this.reset(); }
@@ -189,7 +210,7 @@ class Ship {
   tryShoot() {
     if (this.shootCooldown > 0 || this.dead) return [];
     this.shootCooldown = 0.2;
-    const NOSE = 21;
+    const NOSE = 21;   // ponytail: fijo para todas las formas; ajustar si una skin se alarga mucho
     const ox = this.x + Math.cos(this.angle) * NOSE;
     const oy = this.y + Math.sin(this.angle) * NOSE;
     return [new Bullet(ox, oy, this.angle)];
@@ -200,19 +221,33 @@ class Ship {
     // Parpadeo durante invencibilidad de reaparición
     if (this.invincible > 0 && Math.floor(this.invincible * 8) % 2 === 0) return;
 
+    const sk = skin();
     ctx.save();
     ctx.translate(this.x, this.y);
     ctx.rotate(this.angle);
-    ctx.strokeStyle = this.speedBoost > 0 ? '#4ff' : '#fff';
+    ctx.strokeStyle = this.speedBoost > 0 ? '#4ff' : sk.color;
     ctx.lineWidth   = 1.5;
     ctx.lineJoin    = 'round';
 
-    // Silueta clásica: triángulo con muesca trasera
     ctx.beginPath();
-    ctx.moveTo( 20,  0);   // nariz
-    ctx.lineTo(-12, -9);   // ala izquierda
-    ctx.lineTo( -7,  0);   // muesca trasera
-    ctx.lineTo(-12,  9);   // ala derecha
+    if (sk.forma === 'dardo') {
+      ctx.moveTo( 24,  0);   // nariz alargada
+      ctx.lineTo( -2, -8);
+      ctx.lineTo(-12,  0);   // muesca trasera
+      ctx.lineTo( -2,  8);
+    } else if (sk.forma === 'ala') {
+      ctx.moveTo( 18,  0);
+      ctx.lineTo(  2, -5);
+      ctx.lineTo(-14, -11);  // ala ancha
+      ctx.lineTo( -8,  0);
+      ctx.lineTo(-14,  11);
+      ctx.lineTo(  2,  5);
+    } else {
+      ctx.moveTo( 20,  0);   // nariz
+      ctx.lineTo(-12, -9);   // ala izquierda
+      ctx.lineTo( -7,  0);   // muesca trasera
+      ctx.lineTo(-12,  9);   // ala derecha
+    }
     ctx.closePath();
     ctx.stroke();
 
@@ -222,7 +257,7 @@ class Ship {
       ctx.moveTo(-8, -4);
       ctx.lineTo(-8 - rand(6, 14), 0);
       ctx.lineTo(-8,  4);
-      ctx.strokeStyle = 'rgba(255, 130, 0, 0.85)';
+      ctx.strokeStyle = sk.llama;
       ctx.stroke();
     }
 
@@ -403,6 +438,12 @@ function update(dt) {
     bullets.push(...ship.tryShoot());
   }
 
+  // Cambiar skin
+  if (pressed('KeyC')) {
+    skinIndex = (skinIndex + 1) % SKINS.length;
+    saveSkin(skinIndex);
+  }
+
   ship.update(dt);
   bullets.forEach(b => b.update(dt));
   asteroids.forEach(a => a.update(dt));
@@ -466,11 +507,11 @@ function update(dt) {
 }
 
 // ── Draw ──────────────────────────────────────────────────────────────────────
-function drawLifeIcon(x, y) {
+function drawLifeIcon(x, y, color) {
   ctx.save();
   ctx.translate(x, y);
   ctx.rotate(-Math.PI / 2);
-  ctx.strokeStyle = '#fff';
+  ctx.strokeStyle = color;
   ctx.lineWidth   = 1.2;
   ctx.lineJoin    = 'round';
   ctx.beginPath();
@@ -489,10 +530,11 @@ function drawHUD() {
 
   ctx.textAlign = 'left';
   ctx.fillText(`SCORE  ${score}`, 14, 26);
+  ctx.fillText(`NAVE: ${skin().nombre}  (C)`, 14, 46);
 
   if (ship.speedBoost > 0) {
     ctx.fillStyle = '#4ff';
-    ctx.fillText(`VELOCIDAD x2  ${ship.speedBoost.toFixed(1)}s`, 14, 46);
+    ctx.fillText(`VELOCIDAD x2  ${ship.speedBoost.toFixed(1)}s`, 14, 66);
     ctx.fillStyle = '#fff';
   }
 
@@ -500,7 +542,7 @@ function drawHUD() {
   ctx.fillText(`NIVEL ${level}`, W / 2, 26);
 
   for (let i = 0; i < lives; i++)
-    drawLifeIcon(W - 16 - i * 22, 18);
+    drawLifeIcon(W - 16 - i * 22, 18, skin().color);
 
 }
 
