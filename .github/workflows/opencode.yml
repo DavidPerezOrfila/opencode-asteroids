@@ -7,11 +7,9 @@ on:
 
 jobs:
   opencode:
-    # El bot comenta sus propios errores en la issue, y cualquier enlace a este
-    # repo contiene "/opencode-asteroids", asi que un contains() solo genera un
-    # bucle infinito de runs. Exigimos que la mencion empiece al principio del
-    # comentario y que el autor no sea un bot.
-    if: github.event.comment.user.type != 'Bot' && (startsWith(trim(github.event.comment.body), '/oc') || startsWith(trim(github.event.comment.body), '/opencode'))
+    if: |
+      github.event.comment.user.type != 'Bot' &&
+      contains(github.event.comment.body, '/oc')
     runs-on: ubuntu-latest
     permissions:
       id-token: write
