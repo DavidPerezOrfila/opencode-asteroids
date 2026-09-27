@@ -11,10 +11,7 @@ jobs:
     # repo contiene "/opencode-asteroids", asi que un contains() solo genera un
     # bucle infinito de runs. Exigimos que la mencion empiece al principio del
     # comentario y que el autor no sea un bot.
-    if: |
-      github.event.comment.user.type != 'Bot' &&
-      (startsWith(trim(github.event.comment.body), '/oc') ||
-       startsWith(trim(github.event.comment.body), '/opencode'))
+    if: github.event.comment.user.type != 'Bot' && (startsWith(trim(github.event.comment.body), '/oc') || startsWith(trim(github.event.comment.body), '/opencode'))
     runs-on: ubuntu-latest
     permissions:
       id-token: write
