@@ -25,4 +25,4 @@ jobs:
       - name: Run OpenCode
         uses: anomalyco/opencode/github@latest
         with:
-          model: opencode/jev-1.13-free
+          model: opencode/mimo-v2.6-flash-free
