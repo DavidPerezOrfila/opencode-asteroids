@@ -144,10 +144,12 @@ class Asteroid {
 }
 
 // ── Skins de la nave ──────────────────────────────────────────────────────────
+// `escala` amplía el dibujo y la colisión de la nave; `puntos` multiplica lo que suma.
 const SKINS = [
-  { nombre: 'CLASICA', color: '#fff', llama: 'rgba(255, 130, 0, 0.85)', forma: 'clasica' },
-  { nombre: 'DARDO',   color: '#f4f', llama: 'rgba(255, 80, 220, 0.85)', forma: 'dardo' },
-  { nombre: 'ALA',     color: '#f84', llama: 'rgba(255, 60, 0, 0.85)',  forma: 'ala' },
+  { nombre: 'CLASICA', color: '#fff',    llama: 'rgba(255, 130, 0, 0.85)',   forma: 'clasica', escala: 1, puntos: 1 },
+  { nombre: 'DARDO',   color: '#f4f',    llama: 'rgba(255, 80, 220, 0.85)',  forma: 'dardo',   escala: 1, puntos: 1 },
+  { nombre: 'ALA',     color: '#f84',    llama: 'rgba(255, 60, 0, 0.85)',    forma: 'ala',     escala: 1, puntos: 1 },
+  { nombre: 'COLOSAL', color: '#a855f7', llama: 'rgba(168, 85, 247, 0.85)',  forma: 'clasica', escala: 2, puntos: 2 },
 ];
 
 // Persistencia tolerante a almacenamiento bloqueado (modo privado, file://)
@@ -168,6 +170,10 @@ const skin = () => SKINS[skinIndex];
 const SHIELD_DURATION = 4;    // segundos activo
 const SHIELD_COOLDOWN = 10;   // segundos entre activaciones
 const SHIELD_RADIUS   = 22;   // radio visual y de colisión
+const SHIP_RADIUS     = 12;   // radio base (se amplía con skin().escala)
+
+const skinScale  = () => skin().escala;
+const skinPoints = () => skin().puntos;
 
 class Ship {
   constructor() { this.reset(); }
@@ -178,7 +184,7 @@ class Ship {
     this.angle  = -Math.PI / 2;
     this.vx     = 0;
     this.vy     = 0;
-    this.radius = 12;
+    this.radius = SHIP_RADIUS * skinScale();
     this.thrusting     = false;
     this.invincible    = 3;
     this.shootCooldown = 0;
@@ -227,7 +233,7 @@ class Ship {
   tryShoot() {
     if (this.shootCooldown > 0 || this.dead) return [];
     this.shootCooldown = 0.2;
-    const NOSE = 21;   // ponytail: fijo para todas las formas; ajustar si una skin se alarga mucho
+    const NOSE = 21 * skinScale();   // ponytail: fijo para todas las formas; ajustar si una skin se alarga mucho
     const ox = this.x + Math.cos(this.angle) * NOSE;
     const oy = this.y + Math.sin(this.angle) * NOSE;
     if (this.tripleShot <= 0) return [new Bullet(ox, oy, this.angle)];
@@ -235,7 +241,7 @@ class Ship {
     // Tres balas paralelas: offset perpendicular a la nariz
     const px = Math.cos(this.angle + Math.PI / 2);
     const py = Math.sin(this.angle + Math.PI / 2);
-    const SPREAD = 9;
+    const SPREAD = 9 * skinScale();
     return [-SPREAD, 0, SPREAD].map(
       off => new Bullet(ox + px * off, oy + py * off, this.angle)
     );
@@ -250,6 +256,7 @@ class Ship {
     ctx.save();
     ctx.translate(this.x, this.y);
     ctx.rotate(this.angle);
+    ctx.scale(sk.escala, sk.escala);
     ctx.strokeStyle = this.speedBoost > 0 ? '#4ff' : sk.color;
     ctx.lineWidth   = 1.5;
     ctx.lineJoin    = 'round';
@@ -294,7 +301,7 @@ class Ship {
       ctx.strokeStyle = 'rgba(80, 220, 255, 0.85)';
       ctx.lineWidth   = 2;
       ctx.beginPath();
-      ctx.arc(this.x, this.y, SHIELD_RADIUS, 0, Math.PI * 2);
+      ctx.arc(this.x, this.y, SHIELD_RADIUS * skinScale(), 0, Math.PI * 2);
       ctx.stroke();
       ctx.restore();
     }
@@ -485,6 +492,7 @@ function update(dt) {
   if (pressed('KeyC')) {
     skinIndex = (skinIndex + 1) % SKINS.length;
     saveSkin(skinIndex);
+    ship.radius = SHIP_RADIUS * skinScale();   // el tamaño cambia con la skin
   }
 
   ship.update(dt);
@@ -527,7 +535,7 @@ function update(dt) {
       if (!a.dead && !b.dead && dist(b, a) < a.radius) {
         b.dead = true;
         a.dead = true;
-        score += a.kind === 'fugaz' ? FUGAZ_POINTS : POINTS[a.size];
+        score += (a.kind === 'fugaz' ? FUGAZ_POINTS : POINTS[a.size]) * skinPoints();
         explode(a.x, a.y, a.size * 5);
         newAsteroids.push(...a.split());
       }
@@ -543,7 +551,7 @@ function update(dt) {
     for (const a of asteroids) {
       if (a.dead) continue;
       const blocked = ship.shieldTime > 0;
-      const hitRadius = blocked ? SHIELD_RADIUS : ship.radius;
+      const hitRadius = blocked ? SHIELD_RADIUS * skinScale() : ship.radius;
       if (dist(ship, a) < hitRadius + a.radius * 0.82) {
         if (blocked) {
           a.dead = true;
@@ -586,7 +594,7 @@ function drawHUD() {
 
   ctx.textAlign = 'left';
   ctx.fillText(`SCORE  ${score}`, 14, 26);
-  ctx.fillText(`NAVE: ${skin().nombre}  (C)`, 14, 46);
+  ctx.fillText(`NAVE: ${skin().nombre}${skinPoints() > 1 ? `  x${skinPoints()}` : ''}  (C)`, 14, 46);
 
   if (ship.speedBoost > 0) {
     ctx.fillStyle = '#4ff';
