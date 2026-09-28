@@ -85,7 +85,7 @@ jobs:
           rule "test"          "b60205" "Pruebas o cobertura"              '(^|[^a-z])(test|tests|pruebas?|coverage|cobertura|e2e)([^a-z]|$)'
           rule "refactor"      "c2e0c6" "Limpieza de codigo sin cambiar comportamiento" '(^|[^a-z])(refactor|refactorizar|limpiar|limpieza|simplificar|clean ?up|cleanup|reordenar)([^a-z]|$)'
           rule "performance"   "1d76db" "Velocidad o consumo de recursos"  '(^|[^a-z])(rendimiento|performance|lento|slow|optimizar|optimiza|memoria|fps)([^a-z]|$)'
-          rule "enhancement"   "a2eeef" "Nueva funcionalidad o mejora"     '(^|[^a-z])(feature|m[ée]jora|a[ñn]adir|agregar|nuev[oa]|propuesta|idea|add|implement|implementar|soporte|support)([^a-z]|$)'
+          rule "enhancement"   "a2eeef" "Nueva funcionalidad o mejora"     '(^|[^a-z])(feature|m[ée]jora|a[ñn]adir|agregar|nuev[oa]|propuesta|idea|add|implement|implementar|soporte|support|aumentar|duplicar|agrandar|ampliar|tama[ñn]o|resoluci[oó]n|pantalla completa)([^a-z]|$)'
 
           # ── 3. Cuerpo: metadatos arriba, texto original intacto abajo ────────────
           marker="<!-- opencode-triage -->"
