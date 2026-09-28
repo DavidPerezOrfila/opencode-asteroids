@@ -118,6 +118,30 @@ test('la tecla C cicla la skin y la guarda', async ({ page }) => {
   await page.keyboard.press('KeyC');
   await expect.poll(() => read(page, 'skinIndex')).toBe(2);
 
+  await page.keyboard.press('KeyC');
+  await expect.poll(() => read(page, 'skinIndex')).toBe(3);
+  expect(await read(page, 'localStorage.getItem("asteroids-skin")')).toBe('3');
+
   await page.keyboard.press('KeyC');   // vuelve a la primera
   await expect.poll(() => read(page, 'skinIndex')).toBe(0);
+});
+
+test('la nave COLOSAL es morada, del doble de tamaño y da el doble de puntos', async ({ page }) => {
+  await page.goto('index.html');
+  await read(page, 'skinIndex = 3; ship.reset();');
+
+  expect(await read(page, 'skin().nombre')).toBe('COLOSAL');
+  expect(await read(page, 'skin().color')).toBe('#a855f7');
+  expect(await read(page, 'skin().escala')).toBe(2);
+  expect(await read(page, 'skin().puntos')).toBe(2);
+  expect(await read(page, 'ship.radius')).toBe(24);        // 12 x2
+
+  // Destruir un asteroide pequeño (100 pts) debe sumar el doble
+  await read(page, `
+    score = 0;
+    ship.invincible = 999;
+    asteroids = [new Asteroid(ship.x + 120, ship.y, 1, 'normal', 0)];
+    bullets   = [new Bullet(ship.x, ship.y, 0)];
+  `);
+  await expect.poll(async () => (await snapshot(page)).score, { timeout: 5000 }).toBe(200);
 });

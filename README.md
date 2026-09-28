@@ -40,13 +40,15 @@ Luego visita `http://localhost:3000`.
 | Pequeño        | 100    |
 | Estrella fugaz | 150    |
 
+Con la nave **COLOSAL** todos los puntos se multiplican por 2.
+
 ## Características
 
 - 3 vidas con invencibilidad temporal al reaparecer (parpadeo)
 - Asteroides se parten en fragmentos más pequeños al ser destruidos
 - Estrella fugaz: asteroide especial, amarillo y con estela, que cruza la pantalla al doble y medio de velocidad y se desvanece a los 6 segundos si no lo destruyes. No se parte y no bloquea el paso de nivel; vale 150 puntos
 - Power-up **Velocidad**: aparece de vez en cuando y duplica el empuje de la nave durante 5 segundos
-- Skins de la nave: 3 apariencias (forma y color distintas) que se ciclan con `C` y se recuerdan entre sesiones
+- Skins de la nave: 4 apariencias (forma, color y tamaño distintos) que se ciclan con `C` y se recuerdan entre sesiones. **COLOSAL** es morada, del doble de tamaño que la nave original y otorga el doble de puntos
 - Partículas de explosión al destruir asteroides
 
 ## Tests
