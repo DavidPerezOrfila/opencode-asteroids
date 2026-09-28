@@ -1,0 +1,96 @@
+name: issue-triage
+on:
+  issues:
+    types: [opened]
+
+permissions:
+  issues: write
+
+jobs:
+  triage:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 1
+          persist-credentials: false
+
+      - name: Triage issue
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          ISSUE_NUMBER: ${{ github.event.issue.number }}
+          ISSUE_TITLE: ${{ github.event.issue.title }}
+          ISSUE_BODY: ${{ github.event.issue.body }}
+          AUTHOR: ${{ github.event.issue.user.login }}
+          HEAD_SHA: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+          export LC_ALL=C.UTF-8
+          cd "$GITHUB_WORKSPACE"
+
+          # ── 1. Título normalizado (una sola línea, sin espacios redundantes) ──────
+          title=$(printf '%s' "$ISSUE_TITLE" \
+            | tr -d '\r' \
+            | tr '\n\t' '  ' \
+            | sed -E 's/[[:space:]]+/ /g; s/^ +//; s/ +$//' \
+            | cut -c1-240)
+          [ -n "$title" ] || title="(sin título)"
+
+          # ── 2. Etiquetas por palabras clave (ES + EN) ────────────────────────────
+          haystack=$(printf '%s %s' "$title" "$ISSUE_BODY" \
+            | tr -d '\r' \
+            | sed -E 's/[[:space:]]+/ /g')
+          haystack=${haystack,,}
+          # Solo minúsculas. Los acentos se resuelven en los propios regex (`c[oó]mo`),
+          # no plegándolos aquí: `sed` con clases multibyte depende del locale y en C
+          # falla expandingiendo la clase letra a letra.
+
+          labels=()
+          has() { local n; for n in "${labels[@]}"; do [ "$n" = "$1" ] && return 0; done; return 1; }
+          add() { has "$1" || labels+=("$1"); }
+          ensure() { gh label create "$1" --color "$2" --description "$3" >/dev/null 2>&1 || true; }
+
+          rule() { # rule <label> <color> <descripción> <regex>
+            # here-string y no pipe: grep -q cerrando antes hace que printf reciba
+            # SIGPIPE y, con pipefail, la regla no casaría de forma intermitente.
+            if grep -Eqi "$4" <<<"$haystack"; then
+              add "$1"; ensure "$1" "$2" "$3"
+            fi
+          }
+
+          add "needs-triage"
+          rule "question"      "d876e3" "Duda sobre el comportamiento actual" '(^|[^a-z])(c[oó]mo|how|why|duda|pregunta)([^a-z]|$)|\?'
+          rule "bug"           "d73a4a" "Algo no funciona como debería"    '(^|[^a-z])(bug|error|roto|rompe|falla|fallo|crashea|broken|crash|no (funciona|anda|arranca)|doesn.t work)([^a-z]|$)'
+          rule "documentation" "0075ca" "Documentacion o README"           '(^|[^a-z])(doc|docs|documentaci[oó]n|readme|typo|texto)([^a-z]|$)'
+          rule "test"          "b60205" "Pruebas o cobertura"              '(^|[^a-z])(test|tests|pruebas?|coverage|cobertura|e2e)([^a-z]|$)'
+          rule "refactor"      "c2e0c6" "Limpieza de codigo sin cambiar comportamiento" '(^|[^a-z])(refactor|refactorizar|limpiar|limpieza|simplificar|clean ?up|cleanup|reordenar)([^a-z]|$)'
+          rule "performance"   "1d76db" "Velocidad o consumo de recursos"  '(^|[^a-z])(rendimiento|performance|lento|slow|optimizar|optimiza|memoria|fps)([^a-z]|$)'
+          rule "enhancement"   "a2eeef" "Nueva funcionalidad o mejora"     '(^|[^a-z])(feature|m[ée]jora|a[ñn]adir|agregar|nuev[oa]|propuesta|idea|add|implement|implementar|soporte|support)([^a-z]|$)'
+
+          # ── 3. Cuerpo: metadatos arriba, texto original intacto abajo ────────────
+          marker="<!-- opencode-triage -->"
+          i=1
+          while grep -Fq "$marker" <<<"$ISSUE_BODY"; do
+            i=$((i + 1)); marker="<!-- opencode-triage-$i -->"
+          done
+
+          version=$(node -p "require('./package.json').version" 2>/dev/null || echo "n/d")
+
+          {
+            printf '### Triage automático\n\n'
+            printf '| | |\n|---|---|\n'
+            printf '| Autor | @%s |\n' "$AUTHOR"
+            printf '| Creado | %s |\n' "$(date -u +'%Y-%m-%d %H:%M UTC')"
+            printf '| Commit | `%s` |\n' "${HEAD_SHA:0:7}"
+            printf '| Versión | `%s` |\n' "$version"
+            printf '| Issue | #%s |\n' "$ISSUE_NUMBER"
+            printf '\n<!-- Labels: %s -->\n\n' "${labels[*]}"
+            printf -- '---\n\n### Original (sin modificar)\n\n'
+            if [ -n "$ISSUE_BODY" ]; then printf '%s\n' "$ISSUE_BODY"; else printf '*(sin descripción)*\n'; fi
+            printf '\n%s\n' "$marker"
+          } > "$RUNNER_TEMP/body.md"
+
+          # ── 4. Aplicar cambios ──────────────────────────────────────────────────
+          gh issue edit "$ISSUE_NUMBER" --title "$title" --body-file "$RUNNER_TEMP/body.md"
+          gh issue edit "$ISSUE_NUMBER" --add-label "$(IFS=,; echo "${labels[*]}")"
