@@ -8,7 +8,7 @@ permissions:
 
 jobs:
   triage:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - name: Checkout repository
         uses: actions/checkout@v6
@@ -48,18 +48,25 @@ jobs:
 
           labels=()
           has() { local n; for n in "${labels[@]}"; do [ "$n" = "$1" ] && return 0; done; return 1; }
-          add() { has "$1" || labels+=("$1"); }
-          ensure() { gh label create "$1" --color "$2" --description "$3" >/dev/null 2>&1 || true; }
+
+          # add <label> <color> <descripción>
+          # Crear la etiqueta va aquí y no en las reglas: toda etiqueta que entra en
+          # la lista debe existir en el repo antes de `gh issue edit --add-label`.
+          add() {
+            has "$1" && return 0
+            labels+=("$1")
+            gh label create "$1" --color "$2" --description "$3" >/dev/null 2>&1 || true
+          }
 
           rule() { # rule <label> <color> <descripción> <regex>
             # here-string y no pipe: grep -q cerrando antes hace que printf reciba
             # SIGPIPE y, con pipefail, la regla no casaría de forma intermitente.
             if grep -Eqi "$4" <<<"$haystack"; then
-              add "$1"; ensure "$1" "$2" "$3"
+              add "$1" "$2" "$3"
             fi
           }
 
-          add "needs-triage"
+          add "needs-triage" "fbca04" "Pendiente de revision humana"
           rule "question"      "d876e3" "Duda sobre el comportamiento actual" '(^|[^a-z])(c[oó]mo|how|why|duda|pregunta)([^a-z]|$)|\?'
           rule "bug"           "d73a4a" "Algo no funciona como debería"    '(^|[^a-z])(bug|error|roto|rompe|falla|fallo|crashea|broken|crash|no (funciona|anda|arranca)|doesn.t work)([^a-z]|$)'
           rule "documentation" "0075ca" "Documentacion o README"           '(^|[^a-z])(doc|docs|documentaci[oó]n|readme|typo|texto)([^a-z]|$)'
@@ -85,7 +92,8 @@ jobs:
             printf '| Commit | `%s` |\n' "${HEAD_SHA:0:7}"
             printf '| Versión | `%s` |\n' "$version"
             printf '| Issue | #%s |\n' "$ISSUE_NUMBER"
-            printf '\n<!-- Labels: %s -->\n\n' "${labels[*]}"
+            printf '| Etiquetas | %s |\n' "$(printf '%s, ' "${labels[@]}" | sed -E 's/, $//')"
+            printf '\n'
             printf -- '---\n\n### Original (sin modificar)\n\n'
             if [ -n "$ISSUE_BODY" ]; then printf '%s\n' "$ISSUE_BODY"; else printf '*(sin descripción)*\n'; fi
             printf '\n%s\n' "$marker"
