@@ -98,7 +98,7 @@ jobs:
 
           {
             printf '### Triage automático\n\n'
-            printf '| | |\n|---|---|\n'
+            printf '| Campo | Valor |\n|---|---|\n'
             printf '| Autor | @%s |\n' "$AUTHOR"
             printf '| Creado | %s |\n' "$(date -u +'%Y-%m-%d %H:%M UTC')"
             printf '| Commit | `%s` |\n' "${HEAD_SHA:0:7}"
