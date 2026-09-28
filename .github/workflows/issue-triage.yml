@@ -49,8 +49,20 @@ jobs:
             | cut -c1-240)
           [ -n "$title" ] || title="(sin título)"
 
-          # ── 2. Etiquetas por palabras clave (ES + EN) ────────────────────────────
-          haystack=$(printf '%s %s' "$title" "$ISSUE_BODY" \
+          # ── 2. Original real ─────────────────────────────────────────────────────
+          # El texto que escribió la persona viaja codificado en base64 dentro del
+          # marker del final. Si ya está, se recupera de ahí; si no, el cuerpo actual
+          # es el original. Va antes del `haystack` para que una segunda pasada
+          # clasifique sobre el texto real y no sobre el bloque de triage anidado.
+          original=""
+          if grep -q '<!-- opencode-triage:v1 ' <<<"$ISSUE_BODY"; then
+            original=$(sed -n 's/^<!-- opencode-triage:v1 //p' <<<"$ISSUE_BODY" \
+              | head -1 | sed 's/ -->$//' | base64 -d 2>/dev/null) || original=""
+          fi
+          [ -n "$original" ] || original="$ISSUE_BODY"
+
+          # ── 3. Etiquetas por palabras clave (ES + EN) ────────────────────────────
+          haystack=$(printf '%s %s' "$title" "$original" \
             | tr -d '\r' \
             | sed -E 's/[[:space:]]+/ /g')
           haystack=${haystack,,}
@@ -87,13 +99,7 @@ jobs:
           rule "performance"   "1d76db" "Velocidad o consumo de recursos"  '(^|[^a-z])(rendimiento|performance|lento|slow|optimizar|optimiza|memoria|fps)([^a-z]|$)'
           rule "enhancement"   "a2eeef" "Nueva funcionalidad o mejora"     '(^|[^a-z])(feature|m[ée]jora|a[ñn]adir|agregar|nuev[oa]|propuesta|idea|add|implement|implementar|soporte|support|aumentar|duplicar|agrandar|ampliar|tama[ñn]o|resoluci[oó]n|pantalla completa)([^a-z]|$)'
 
-          # ── 3. Cuerpo: metadatos arriba, texto original intacto abajo ────────────
-          marker="<!-- opencode-triage -->"
-          i=1
-          while grep -Fq "$marker" <<<"$ISSUE_BODY"; do
-            i=$((i + 1)); marker="<!-- opencode-triage-$i -->"
-          done
-
+          # ── 4. Cuerpo: metadatos arriba, texto original intacto abajo ────────────
           version=$(node -p "require('./package.json').version" 2>/dev/null || echo "n/d")
 
           {
@@ -107,10 +113,12 @@ jobs:
             printf '| Etiquetas | %s |\n' "$(printf '%s, ' "${labels[@]}" | sed -E 's/, $//')"
             printf '\n'
             printf -- '---\n\n### Original (sin modificar)\n\n'
-            if [ -n "$ISSUE_BODY" ]; then printf '%s\n' "$ISSUE_BODY"; else printf '*(sin descripción)*\n'; fi
-            printf '\n%s\n' "$marker"
+            if [ -n "$original" ]; then printf '%s\n' "$original"; else printf '*(sin descripción)*\n'; fi
+            # base64 en una sola línea: `base64 -w0`, para que el marker ocupe una
+            # única línea y el sed de recuperación pueda leerlo con `head -1`.
+            printf '\n<!-- opencode-triage:v1 %s -->\n' "$(printf '%s' "$original" | base64 -w0)"
           } > "$RUNNER_TEMP/body.md"
 
-          # ── 4. Aplicar cambios ──────────────────────────────────────────────────
+          # ── 5. Aplicar cambios ──────────────────────────────────────────────────
           gh issue edit "$ISSUE_NUMBER" --title "$title" --body-file "$RUNNER_TEMP/body.md"
           gh issue edit "$ISSUE_NUMBER" --add-label "$(IFS=,; echo "${labels[*]}")"
