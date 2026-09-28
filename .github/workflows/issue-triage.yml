@@ -2,6 +2,14 @@ name: issue-triage
 on:
   issues:
     types: [opened]
+  # Re-procesar un issue a mano: útil cuando el cuerpo original ya fue reemplazado
+  # por una ejecución anterior o cuando se corrige la lógica.
+  workflow_dispatch:
+    inputs:
+      issue:
+        description: 'Número de issue a formatear'
+        required: true
+        type: string
 
 permissions:
   issues: write
@@ -19,15 +27,19 @@ jobs:
       - name: Triage issue
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          ISSUE_NUMBER: ${{ github.event.issue.number }}
-          ISSUE_TITLE: ${{ github.event.issue.title }}
-          ISSUE_BODY: ${{ github.event.issue.body }}
-          AUTHOR: ${{ github.event.issue.user.login }}
+          ISSUE_NUMBER: ${{ inputs.issue || github.event.issue.number }}
           HEAD_SHA: ${{ github.sha }}
         run: |
           set -euo pipefail
           export LC_ALL=C.UTF-8
           cd "$GITHUB_WORKSPACE"
+
+          # Se lee el issue por API en vez de usar el payload del evento: así el
+          # mismo script sirve para `issues: opened` y para `workflow_dispatch`.
+          issue=$(gh issue view "$ISSUE_NUMBER" --json title,body,author)
+          ISSUE_TITLE=$(jq -r '.title' <<<"$issue")
+          ISSUE_BODY=$(jq -r '.body // ""' <<<"$issue")
+          AUTHOR=$(jq -r '.author.login' <<<"$issue")
 
           # ── 1. Título normalizado (una sola línea, sin espacios redundantes) ──────
           title=$(printf '%s' "$ISSUE_TITLE" \
